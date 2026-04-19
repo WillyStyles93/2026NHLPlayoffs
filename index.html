@@ -368,20 +368,14 @@ let currentView = 'teams';
 // ── Fetch ──
 async function fetchPlayerStats(nhlId, type) {
   try {
-    const res = await fetch(`/api/player?id=${nhlId}`);
+    // NHL Stats REST API — returns aggregate 2025-26 playoff totals directly
+    const res = await fetch(`/api/player?id=${nhlId}&type=${type}`);
     if (!res.ok) return type === 'goalie' ? { wins: 0, shutouts: 0 } : { goals: 0, assists: 0 };
     const data = await res.json();
-    const logs = data.gameLog || [];
-    if (type === 'goalie') {
-      return {
-        wins: logs.filter(g => g.decision === 'W').length,
-        shutouts: logs.reduce((s, g) => s + (g.goalsAgainst === 0 && (g.shotsAgainst || 0) > 0 ? 1 : 0), 0),
-      };
-    }
-    return {
-      goals:   logs.reduce((s, g) => s + (g.goals   || 0), 0),
-      assists: logs.reduce((s, g) => s + (g.assists || 0), 0),
-    };
+    const row = (data.data || [])[0];
+    if (!row) return type === 'goalie' ? { wins: 0, shutouts: 0 } : { goals: 0, assists: 0 };
+    if (type === 'goalie') return { wins: row.wins || 0, shutouts: row.shutouts || 0 };
+    return { goals: row.goals || 0, assists: row.assists || 0 };
   } catch { return null; }
 }
 
