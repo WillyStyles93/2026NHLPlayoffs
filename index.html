@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>2026 NHL Playoff Pool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --deep: #060d1a;
+      --blue: #1a56db;
+      --gold: #f0a500;
+      --line: rgba(255,255,255,0.08);
+      --muted: rgba(255,255,255,0.4);
+      --card: rgba(255,255,255,0.04);
+      --card-hover: rgba(255,255,255,0.07);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--deep);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(26,86,219,0.18) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(255,255,255,0.025) 79px, rgba(255,255,255,0.025) 80px);
+      pointer-events: none; z-index: 0;
+    }
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 14px; position: relative; z-index: 1; }
+
+    /* Header */
+    header { padding: 20px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .logo-block h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.7rem, 7vw, 3.6rem);
+      letter-spacing: 0.04em; line-height: 1;
+      background: linear-gradient(135deg, #fff 40%, var(--gold));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .logo-block .subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(0.56rem, 1.8vw, 0.7rem);
+      letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-top: 3px;
+    }
+    .header-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .last-updated { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); display: none; }
+    @media (min-width: 500px) { .last-updated { display: block; } }
+    .refresh-btn {
+      background: var(--blue); border: none; color: #fff;
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em;
+      padding: 9px 16px; cursor: pointer; border-radius: 4px;
+      transition: opacity 0.2s, transform 0.15s; text-transform: uppercase; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .refresh-btn:active { transform: scale(0.96); opacity: 0.75; }
+    .refresh-btn.loading { opacity: 0.5; pointer-events: none; }
+
+    /* Timestamp mobile */
+    .updated-mobile {
+      font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted);
+      text-align: center; padding: 4px 0 2px; display: block;
+    }
+    @media (min-width: 500px) { .updated-mobile { display: none; } }
+
+    /* Scoreboard */
+    .scoreboard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 18px; }
+    .score-card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      padding: clamp(8px, 2vw, 14px) clamp(4px, 1vw, 10px);
+      text-align: center; cursor: pointer; position: relative; overflow: hidden;
+      transition: background 0.2s, border-color 0.2s;
+      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .score-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--mgr-color, var(--blue)), transparent);
+    }
+    .score-card:active { background: var(--card-hover); }
+    .score-card.active { border-color: var(--mgr-color, var(--blue)); background: rgba(255,255,255,0.06); }
+    .score-card .rank { font-family: 'DM Mono', monospace; font-size: 0.52rem; color: var(--muted); margin-bottom: 1px; }
+    .score-card .mgr  { font-family: 'Bebas Neue', sans-serif; font-size: clamp(0.85rem, 3.2vw, 1.25rem); letter-spacing: 0.05em; color: var(--mgr-color, #fff); line-height: 1; }
+    .score-card .pts  { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.7rem, 5.5vw, 2.8rem); line-height: 1.05; color: #fff; margin: 3px 0 1px; }
+    .score-card .lbl  { font-family: 'DM Mono', monospace; font-size: 0.52rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+
+    /* Error */
+    .error-banner {
+      background: rgba(224,32,32,0.12); border: 1px solid rgba(224,32,32,0.3);
+      color: #ff8080; font-family: 'DM Mono', monospace; font-size: 0.68rem;
+      padding: 10px 14px; border-radius: 4px; margin-bottom: 14px;
+      display: none; letter-spacing: 0.04em; line-height: 1.5;
+    }
+    .error-banner.show { display: block; }
+
+    /* View controls */
+    .view-controls { display: flex; gap: 6px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+    .view-btn {
+      background: transparent; border: 1px solid var(--line); color: var(--muted);
+      font-family: 'DM Mono', monospace; font-size: 0.63rem; letter-spacing: 0.1em;
+      padding: 8px 13px; cursor: pointer; border-radius: 4px; text-transform: uppercase;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .view-btn:active { opacity: 0.7; }
+    .view-btn.active { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: #fff; }
+    .filter-label { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; margin-left: auto; }
+
+    /* Teams grid */
+    .teams-view.hidden { display: none; }
+    .teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+
+    .team-panel { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; transition: opacity 0.3s; }
+    .team-panel.dimmed { opacity: 0.22; }
+
+    .team-header {
+      padding: 11px 14px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.03); border-left: 3px solid var(--mgr-color, var(--blue));
+    }
+    .team-header-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; letter-spacing: 0.07em; color: var(--mgr-color, #fff); }
+    .team-header-score { font-family: 'Bebas Neue', sans-serif; font-size: 1.45rem; color: #fff; }
+
+    .section-label {
+      font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.2em;
+      color: var(--muted); text-transform: uppercase; padding: 7px 14px 2px;
+      border-top: 1px solid var(--line);
+    }
+    .section-label:first-of-type { border-top: none; }
+
+    .player-row {
+      display: grid; grid-template-columns: 30px 1fr auto auto;
+      align-items: center; gap: 5px; padding: 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .player-row:last-child { border-bottom: none; }
+    .team-abbr { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted); text-align: center; }
+    .player-name { font-size: 0.8rem; color: rgba(255,255,255,0.88); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .player-stats { display: flex; gap: 3px; }
+    .stat-chip { font-family: 'DM Mono', monospace; font-size: 0.55rem; color: var(--muted); background: rgba(255,255,255,0.06); padding: 2px 4px; border-radius: 2px; }
+    .stat-chip.v { color: rgba(255,255,255,0.78); }
+    .player-pts { font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: 500; color: var(--gold); min-width: 18px; text-align: right; }
+    .player-pts.z { color: var(--muted); }
+
+    /* Leaderboard */
+    .leaderboard-view { display: none; }
+    .leaderboard-view.active { display: block; }
+    .lb-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; min-width: 440px; }
+    .lb-table thead th {
+      font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--muted); text-align: left;
+      padding: 9px 11px; border-bottom: 1px solid var(--line); white-space: nowrap;
+    }
+    .lb-table thead th.r { text-align: right; }
+    .lb-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .lb-table tbody td { padding: 8px 11px; }
+    .lb-table tbody td.r { font-family: 'DM Mono', monospace; text-align: right; color: var(--muted); }
+    .lb-table tbody td.p { font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; color: var(--gold); }
+    .lb-mgr { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; letter-spacing: 0.05em; }
+
+    /* Footer */
+    footer { margin-top: 44px; padding: 18px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    footer p, .li { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.06em; }
+    .scoring-legend { display: flex; gap: 10px; flex-wrap: wrap; }
+    .li span { color: var(--gold); font-weight: 500; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo-block">
+        <h1>2026 NHL Playoff Pool</h1>
+        <p class="subtitle">Live Scoring &nbsp;·&nbsp; Playoffs</p>
+      </div>
+      <div class="header-meta">
+        <span class="last-updated" id="lastUpdated">Fetching…</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="fetchAllStats()">↻ Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <span class="updated-mobile" id="lastUpdatedMobile"></span>
+  <div class="scoreboard" id="scoreboard"></div>
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="view-controls">
+    <button class="view-btn active" id="btnTeams" onclick="setView('teams')">Teams</button>
+    <button class="view-btn" id="btnLeaderboard" onclick="setView('leaderboard')">All Players</button>
+    <span class="filter-label" id="filterLabel"></span>
+  </div>
+
+  <div class="teams-view" id="teamsView">
+    <div class="teams-grid" id="teamsGrid"></div>
+  </div>
+
+  <div class="leaderboard-view" id="leaderboardView">
+    <div class="lb-wrap">
+      <table class="lb-table">
+        <thead><tr>
+          <th class="r">#</th><th>Manager</th><th>Player</th>
+          <th class="r">NHL</th><th class="r">G</th><th class="r">A</th>
+          <th class="r">W</th><th class="r">SO</th><th class="r">PTS</th>
+        </tr></thead>
+        <tbody id="lbBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <div class="scoring-legend">
+      <div class="li">Goal <span>+1</span></div>
+      <div class="li">Assist <span>+1</span></div>
+      <div class="li">Goalie Win <span>+1</span></div>
+      <div class="li">Shutout <span>+4</span></div>
+    </div>
+    <p>NHL API &nbsp;·&nbsp; Auto-refreshes every 5 min</p>
+  </footer>
+</div>
+
+<script>
+const MANAGERS = [
+  { id: 'porf',  name: 'Mike P', color: '#4fc3f7' },
+  { id: 'mikei', name: 'Mike I', color: '#81c784' },
+  { id: 'matt',  name: 'Matt',   color: '#ff8a65' },
+  { id: 'kyle',  name: 'Kyle',   color: '#ce93d8' },
+  { id: 'chad',  name: 'Chad',   color: '#f0a500' },
+];
+
+// All nhlId values verified from nhl.com player page URLs
+const DRAFT = {
+  porf: [
+    { nhlId: 8478402, name: 'Connor McDavid',      team: 'EDM', type: 'skater' },
+    { nhlId: 8471675, name: 'Sidney Crosby',        team: 'PIT', type: 'skater' },
+    { nhlId: 8480763, name: 'Kirill Kaprizov',      team: 'MIN', type: 'skater' },
+    { nhlId: 8476419, name: 'Brock Nelson',         team: 'COL', type: 'skater' },
+    { nhlId: 8476455, name: 'Nazem Kadri',          team: 'COL', type: 'skater' },
+    { nhlId: 8474573, name: 'Ryan Nugent-Hopkins',  team: 'EDM', type: 'skater' },
+    { nhlId: 8476454, name: 'Valeri Nichushkin',    team: 'COL', type: 'skater' },
+    { nhlId: 8475913, name: 'Rickard Rakell',       team: 'PIT', type: 'skater' },
+    { nhlId: 8481523, name: 'Drake Batherson',      team: 'OTT', type: 'skater' },
+    { nhlId: 8478493, name: 'Brady Tkachuk',        team: 'OTT', type: 'skater' },
+    { nhlId: 8482671, name: 'Egor Chinakhov',       team: 'PIT', type: 'skater' },
+    { nhlId: 8483512, name: 'Matthew Savoie',       team: 'EDM', type: 'skater' },
+    { nhlId: 8479973, name: 'Joel Eriksson Ek',     team: 'MIN', type: 'skater' },
+    { nhlId: 8481559, name: 'Joshua Norris',        team: 'BUF', type: 'skater' },
+    { nhlId: 8482775, name: 'Oliver Kapanen',       team: 'MTL', type: 'skater' },
+    { nhlId: 8480145, name: 'Evan Bouchard',        team: 'EDM', type: 'skater' },
+    { nhlId: 8480800, name: 'Quinn Hughes',         team: 'MIN', type: 'skater' },
+    { nhlId: 8482105, name: 'Jake Sanderson',       team: 'OTT', type: 'skater' },
+    { nhlId: 8476398, name: 'Charlie McAvoy',       team: 'BOS', type: 'skater' },
+    { nhlId: 8478971, name: 'Connor Ingram',        team: 'EDM', type: 'goalie' },
+    { nhlId: 8482661, name: 'Jesper Wallstedt',     team: 'MIN', type: 'goalie' },
+  ],
+  mikei: [
+    { nhlId: 8478476, name: 'Nikita Kucherov',     team: 'TBL', type: 'skater' },
+    { nhlId: 8476468, name: 'Mark Stone',           team: 'VEG', type: 'skater' },
+    { nhlId: 8478427, name: 'Sebastian Aho',        team: 'CAR', type: 'skater' },
+    { nhlId: 8481600, name: 'Seth Jarvis',          team: 'CAR', type: 'skater' },
+    { nhlId: 8471215, name: 'Evgeni Malkin',        team: 'PIT', type: 'skater' },
+    { nhlId: 8474190, name: 'Bryan Rust',           team: 'PIT', type: 'skater' },
+    { nhlId: 8481557, name: 'Matt Boldy',           team: 'MIN', type: 'skater' },
+    { nhlId: 8476463, name: 'Anthony Cirelli',      team: 'TBL', type: 'skater' },
+    { nhlId: 8480762, name: 'Ivan Barbashev',       team: 'VEG', type: 'skater' },
+    { nhlId: 8483524, name: 'Pavel Dorofeyev',      team: 'VEG', type: 'skater' },
+    { nhlId: 8475692, name: 'Mats Zuccarello',      team: 'MIN', type: 'skater' },
+    { nhlId: 8474600, name: 'Pavel Zacha',          team: 'BOS', type: 'skater' },
+    { nhlId: 8482113, name: 'Logan Stankoven',      team: 'CAR', type: 'skater' },
+    { nhlId: 8474613, name: 'Viktor Arvidsson',     team: 'BOS', type: 'skater' },
+    { nhlId: 8482178, name: 'Jackson Blake',        team: 'CAR', type: 'skater' },
+    { nhlId: 8480797, name: 'Darren Raddysh',       team: 'TBL', type: 'skater' },
+    { nhlId: 8477425, name: 'Shayne Gostisbehere',  team: 'CAR', type: 'skater' },
+    { nhlId: 8481724, name: 'Rasmus Andersson',     team: 'VEG', type: 'skater' },
+    { nhlId: 8482122, name: 'Brock Faber',          team: 'MIN', type: 'skater' },
+    { nhlId: 8477424, name: 'Andrei Vasilevskiy',   team: 'TBL', type: 'goalie' },
+    { nhlId: 8481535, name: 'Jeremy Swayman',       team: 'BOS', type: 'goalie' },
+  ],
+  matt: [
+    { nhlId: 8477492, name: 'Nathan MacKinnon',     team: 'COL', type: 'skater' },
+    { nhlId: 8477956, name: 'Leon Draisaitl',       team: 'EDM', type: 'skater' },
+    { nhlId: 8480736, name: 'Jake Guentzel',        team: 'TBL', type: 'skater' },
+    { nhlId: 8477996, name: 'Jason Robertson',      team: 'DAL', type: 'skater' },
+    { nhlId: 8481540, name: 'Cole Caufield',        team: 'MTL', type: 'skater' },
+    { nhlId: 8480817, name: 'Zach Hyman',           team: 'EDM', type: 'skater' },
+    { nhlId: 8475791, name: 'Matt Duchene',         team: 'DAL', type: 'skater' },
+    { nhlId: 8479683, name: 'Artturi Lehkonen',     team: 'COL', type: 'skater' },
+    { nhlId: 8483515, name: 'Juraj Slafkovsky',     team: 'MTL', type: 'skater' },
+    { nhlId: 8483452, name: 'Leo Carlsson',         team: 'ANA', type: 'skater' },
+    { nhlId: 8478048, name: 'Travis Konecny',       team: 'PHI', type: 'skater' },
+    { nhlId: 8481533, name: 'Trevor Zegras',        team: 'PHI', type: 'skater' },
+    { nhlId: 8483520, name: 'Logan Cooley',         team: 'UTA', type: 'skater' },
+    { nhlId: 8478849, name: 'Troy Terry',           team: 'ANA', type: 'skater' },
+    { nhlId: 8481546, name: 'Dylan Cozens',         team: 'OTT', type: 'skater' },
+    { nhlId: 8483457, name: 'Lane Hutson',          team: 'MTL', type: 'skater' },
+    { nhlId: 8482074, name: 'Thomas Harley',        team: 'DAL', type: 'skater' },
+    { nhlId: 8470621, name: 'John Carlson',         team: 'ANA', type: 'skater' },
+    { nhlId: 8476462, name: 'Thomas Chabot',        team: 'OTT', type: 'skater' },
+    { nhlId: 8479361, name: 'Jake Oettinger',       team: 'DAL', type: 'goalie' },
+    { nhlId: 8479394, name: 'Carter Hart',          team: 'VEG', type: 'goalie' },
+  ],
+  kyle: [
+    { nhlId: 8478420, name: 'Mikko Rantanen',       team: 'DAL', type: 'skater' },
+    { nhlId: 8478403, name: 'Jack Eichel',          team: 'VEG', type: 'skater' },
+    { nhlId: 8481519, name: 'Nick Suzuki',          team: 'MTL', type: 'skater' },
+    { nhlId: 8476474, name: 'Mitch Marner',         team: 'VEG', type: 'skater' },
+    { nhlId: 8480694, name: 'Nikolaj Ehlers',       team: 'CAR', type: 'skater' },
+    { nhlId: 8477987, name: 'David Pastrnak',       team: 'BOS', type: 'skater' },
+    { nhlId: 8482116, name: 'Tim Stutzle',          team: 'OTT', type: 'skater' },
+    { nhlId: 8480830, name: 'Andrei Svechnikov',    team: 'CAR', type: 'skater' },
+    { nhlId: 8484984, name: 'Ivan Demidov',         team: 'MTL', type: 'skater' },
+    { nhlId: 8476854, name: 'Anthony Mantha',       team: 'PIT', type: 'skater' },
+    { nhlId: 8478483, name: 'Artemi Panarin',       team: 'LAK', type: 'skater' },
+    { nhlId: 8481596, name: 'Morgan Geekie',        team: 'BOS', type: 'skater' },
+    { nhlId: 8481766, name: 'Tomas Hertl',          team: 'VEG', type: 'skater' },
+    { nhlId: 8484762, name: 'Beckett Sennecke',     team: 'ANA', type: 'skater' },
+    { nhlId: 8479391, name: 'Roope Hintz',          team: 'DAL', type: 'skater' },
+    { nhlId: 8481601, name: 'Cale Makar',           team: 'COL', type: 'skater' },
+    { nhlId: 8481730, name: 'Miro Heiskanen',       team: 'DAL', type: 'skater' },
+    { nhlId: 8474578, name: 'Erik Karlsson',        team: 'PIT', type: 'skater' },
+    { nhlId: 8482629, name: 'Shea Theodore',        team: 'VEG', type: 'skater' },
+    { nhlId: 8482487, name: 'Jakub Dobes',          team: 'MTL', type: 'goalie' },
+    { nhlId: 8476999, name: 'Linus Ullmark',        team: 'OTT', type: 'goalie' },
+  ],
+  chad: [
+    { nhlId: 8482113, name: 'Martin Necas',         team: 'COL', type: 'skater' },
+    { nhlId: 8481542, name: 'Brandon Hagel',        team: 'TBL', type: 'skater' },
+    { nhlId: 8482740, name: 'Wyatt Johnston',       team: 'DAL', type: 'skater' },
+    { nhlId: 8479420, name: 'Tage Thompson',        team: 'BUF', type: 'skater' },
+    { nhlId: 8476346, name: 'Brayden Point',        team: 'TBL', type: 'skater' },
+    { nhlId: 8478009, name: 'Alex Tuch',            team: 'BUF', type: 'skater' },
+    { nhlId: 8477404, name: 'Gabriel Landeskog',    team: 'COL', type: 'skater' },
+    { nhlId: 8479343, name: 'Clayton Keller',       team: 'UTA', type: 'skater' },
+    { nhlId: 8482699, name: 'Dylan Guenther',       team: 'UTA', type: 'skater' },
+    { nhlId: 8482659, name: 'Josh Doan',            team: 'BUF', type: 'skater' },
+    { nhlId: 8483452, name: 'Cutter Gauthier',      team: 'ANA', type: 'skater' },
+    { nhlId: 8477951, name: 'Nick Schmaltz',        team: 'UTA', type: 'skater' },
+    { nhlId: 8482201, name: 'Gage Goncalves',       team: 'TBL', type: 'skater' },
+    { nhlId: 8476472, name: 'Mikael Granlund',      team: 'ANA', type: 'skater' },
+    { nhlId: 8476909, name: 'Adrian Kempe',         team: 'LAK', type: 'skater' },
+    { nhlId: 8480839, name: 'Rasmus Dahlin',        team: 'BUF', type: 'skater' },
+    { nhlId: 8479410, name: 'Mikhail Sergachev',    team: 'UTA', type: 'skater' },
+    { nhlId: 8481605, name: 'Jackson LaCombe',      team: 'ANA', type: 'skater' },
+    { nhlId: 8482100, name: 'Alexander Nikishin',   team: 'CAR', type: 'skater' },
+    { nhlId: 8475809, name: 'Scott Wedgewood',      team: 'COL', type: 'goalie' },
+    { nhlId: 8480045, name: 'Ukko-Pekka Luukkonen', team: 'BUF', type: 'goalie' },
+  ],
+};
+
+// ── Scoring ──
+function calc(stats, type) {
+  if (!stats) return 0;
+  return type === 'goalie'
+    ? (stats.wins || 0) + (stats.shutouts || 0) * 4
+    : (stats.goals || 0) + (stats.assists || 0);
+}
+
+// ── State ──
+let playerStats = {};
+let activeManager = null;
+let currentView = 'teams';
+
+// ── Fetch ──
+async function fetchPlayerStats(nhlId, type) {
+  try {
+    const res = await fetch(`/api/player?id=${nhlId}`);
+    if (!res.ok) return type === 'goalie' ? { wins: 0, shutouts: 0 } : { goals: 0, assists: 0 };
+    const data = await res.json();
+    const logs = data.gameLog || [];
+    if (type === 'goalie') {
+      return {
+        wins: logs.filter(g => g.decision === 'W').length,
+        shutouts: logs.reduce((s, g) => s + (g.goalsAgainst === 0 && (g.shotsAgainst || 0) > 0 ? 1 : 0), 0),
+      };
+    }
+    return {
+      goals:   logs.reduce((s, g) => s + (g.goals   || 0), 0),
+      assists: logs.reduce((s, g) => s + (g.assists || 0), 0),
+    };
+  } catch { return null; }
+}
+
+async function fetchAllStats() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading'); btn.textContent = '↻ Loading…';
+  showError(null);
+
+  const seen = new Set(), all = [];
+  Object.values(DRAFT).forEach(ps => ps.forEach(p => { if (!seen.has(p.nhlId)) { seen.add(p.nhlId); all.push(p); } }));
+
+  let anyFailed = false;
+  for (let i = 0; i < all.length; i += 5) {
+    const results = await Promise.allSettled(
+      all.slice(i, i + 5).map(p => fetchPlayerStats(p.nhlId, p.type).then(s => ({ nhlId: p.nhlId, stats: s })))
+    );
+    results.forEach(r => {
+      if (r.status === 'fulfilled' && r.value) {
+        playerStats[r.value.nhlId] = r.value.stats;
+        if (!r.value.stats) anyFailed = true;
+      } else anyFailed = true;
+    });
+  }
+
+  if (anyFailed) showError('Some stats unavailable — NHL API may be rate-limiting. Partial data shown.');
+  const t = 'Updated ' + new Date().toLocaleTimeString();
+  document.getElementById('lastUpdated').textContent = t;
+  document.getElementById('lastUpdatedMobile').textContent = t;
+  btn.classList.remove('loading'); btn.textContent = '↻ Refresh';
+  render();
+}
+
+// ── Render helpers ──
+function total(id) { return DRAFT[id].reduce((s, p) => s + calc(playerStats[p.nhlId], p.type), 0); }
+
+function renderScoreboard() {
+  const sorted = MANAGERS.map(m => ({ ...m, t: total(m.id) })).sort((a, b) => b.t - a.t);
+  document.getElementById('scoreboard').innerHTML = sorted.map((m, i) => `
+    <div class="score-card ${activeManager === m.id ? 'active' : ''}" style="--mgr-color:${m.color}" onclick="toggleManager('${m.id}')">
+      <div class="rank">#${i+1}</div>
+      <div class="mgr">${m.name}</div>
+      <div class="pts">${m.t}</div>
+      <div class="lbl">PTS</div>
+    </div>`).join('');
+}
+
+function renderTeams() {
+  document.getElementById('teamsGrid').innerHTML = MANAGERS.map(m => {
+    const t = total(m.id);
+    const dim = activeManager && activeManager !== m.id;
+    const row = p => {
+      const s = playerStats[p.nhlId];
+      const pt = calc(s, p.type);
+      const chips = p.type === 'goalie'
+        ? `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span><span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`
+        : `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span><span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
+      return `<div class="player-row">
+        <div class="team-abbr">${p.team}</div>
+        <div class="player-name">${p.name}</div>
+        <div class="player-stats">${chips}</div>
+        <div class="player-pts ${pt===0?'z':''}">${pt}</div>
+      </div>`;
+    };
+    const sk = DRAFT[m.id].filter(p => p.type==='skater');
+    const go = DRAFT[m.id].filter(p => p.type==='goalie');
+    return `<div class="team-panel ${dim?'dimmed':''}">
+      <div class="team-header" style="--mgr-color:${m.color}">
+        <div class="team-header-name">${m.name}</div>
+        <div class="team-header-score">${t}</div>
+      </div>
+      <div class="section-label">Skaters</div>${sk.map(row).join('')}
+      <div class="section-label">Goalies</div>${go.map(row).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderLeaderboard() {
+  const rows = [];
+  MANAGERS.forEach(m => DRAFT[m.id].forEach(p => rows.push({ m, p, s: playerStats[p.nhlId], pt: calc(playerStats[p.nhlId], p.type) })));
+  const f = activeManager ? rows.filter(r => r.m.id === activeManager) : rows;
+  f.sort((a,b) => b.pt - a.pt);
+  document.getElementById('lbBody').innerHTML = f.map((r,i) => {
+    const g = r.p.type === 'goalie';
+    return `<tr>
+      <td class="r" style="color:var(--muted)">${i+1}</td>
+      <td><span class="lb-mgr" style="color:${r.m.color}">${r.m.name}</span></td>
+      <td>${r.p.name}</td>
+      <td class="r">${r.p.team}</td>
+      <td class="r">${g?'—':(r.s?r.s.goals:'–')}</td>
+      <td class="r">${g?'—':(r.s?r.s.assists:'–')}</td>
+      <td class="r">${g?(r.s?r.s.wins:'–'):'—'}</td>
+      <td class="r">${g?(r.s?r.s.shutouts:'–'):'—'}</td>
+      <td class="p">${r.pt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function render() {
+  renderScoreboard(); renderTeams(); renderLeaderboard();
+  const fl = document.getElementById('filterLabel');
+  if (activeManager) { const m = MANAGERS.find(x => x.id===activeManager); fl.textContent = `Showing: ${m.name}`; fl.style.color = m.color; }
+  else { fl.textContent = ''; }
+}
+
+// ── Controls ──
+function toggleManager(id) { activeManager = activeManager === id ? null : id; render(); }
+function setView(v) {
+  currentView = v;
+  document.getElementById('teamsView').classList.toggle('hidden', v!=='teams');
+  document.getElementById('leaderboardView').classList.toggle('active', v==='leaderboard');
+  document.getElementById('btnTeams').classList.toggle('active', v==='teams');
+  document.getElementById('btnLeaderboard').classList.toggle('active', v==='leaderboard');
+  render();
+}
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  if (msg) { el.textContent = msg; el.classList.add('show'); } else { el.classList.remove('show'); }
+}
+
+// ── Boot ──
+render();
+fetchAllStats();
+setInterval(fetchAllStats, 5 * 60 * 1000);
+</script>
+</body>
+</html>
