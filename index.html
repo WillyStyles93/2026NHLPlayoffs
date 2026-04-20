@@ -50,9 +50,8 @@
       font-size: clamp(0.56rem, 1.8vw, 0.7rem);
       letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-top: 3px;
     }
-    .header-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .last-updated { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); display: none; }
-    @media (min-width: 500px) { .last-updated { display: block; } }
+    .header-meta { display: flex; align-items: flex-end; flex-direction: column; gap: 5px; flex-shrink: 0; }
+    .last-updated { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted); display: block; text-align: right; }
     .refresh-btn {
       background: var(--blue); border: none; color: #fff;
       font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.08em;
@@ -63,12 +62,8 @@
     .refresh-btn:active { transform: scale(0.96); opacity: 0.75; }
     .refresh-btn.loading { opacity: 0.5; pointer-events: none; }
 
-    /* Timestamp mobile */
-    .updated-mobile {
-      font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted);
-      text-align: center; padding: 4px 0 2px; display: block;
-    }
-    @media (min-width: 500px) { .updated-mobile { display: none; } }
+    /* Timestamp mobile - now always in header, this element is hidden */
+    .updated-mobile { display: none; }
 
     /* Scoreboard */
     .scoreboard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 18px; }
@@ -148,12 +143,26 @@
     .player-pts.z { color: var(--muted); }
 
     /* Collapsible roster */
-    .team-header { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-    .team-header:active { background: rgba(255,255,255,0.07); }
-    .collapse-icon { font-size: 0.7rem; color: var(--muted); transition: transform 0.22s; flex-shrink: 0; margin-left: 8px; }
-    .team-panel.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .team-header { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.18s; }
+    .team-header:hover { background: rgba(255,255,255,0.07); }
+    .team-header:active { background: rgba(255,255,255,0.1); }
+    .toggle-pill {
+      font-family: 'DM Mono', monospace; font-size: 0.52rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--muted);
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px; padding: 3px 9px; flex-shrink: 0; margin-left: 8px;
+      transition: background 0.18s, color 0.18s;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .toggle-pill .pill-arrow { font-size: 0.6rem; transition: transform 0.22s; display: inline-block; }
+    .team-panel.collapsed .pill-arrow { transform: rotate(-90deg); }
+    .team-header:hover .toggle-pill { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.8); }
     .roster-body { overflow: hidden; transition: max-height 0.28s ease; }
     .team-panel.collapsed .roster-body { max-height: 0 !important; }
+
+    .player-row.eliminated { opacity: 0.35; }
+    .player-row.eliminated .player-name { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.3); }
+    .player-row.eliminated .team-abbr::after { content: '✕'; display: block; font-size: 0.45rem; color: #e05555; margin-top: 1px; }
 
     /* Players remaining badge */
     .score-card .remaining { font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
@@ -463,13 +472,15 @@ function renderTeams() {
   document.getElementById('teamsGrid').innerHTML = MANAGERS.map(m => {
     const t = total(m.id);
     const dim = activeManager && activeManager !== m.id;
+    const activeSet = new Set(ACTIVE_TEAMS[m.id] || []);
     const row = p => {
       const s = playerStats[p.nhlId];
       const pt = calc(s, p.type);
+      const elim = activeSet.size > 0 && !activeSet.has(p.team);
       const chips = p.type === 'goalie'
         ? `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span><span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`
         : `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span><span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
-      return `<div class="player-row">
+      return `<div class="player-row${elim?' eliminated':''}">
         <div class="team-abbr">${p.team}</div>
         <div class="player-name">${p.name}</div>
         <div class="player-stats">${chips}</div>
@@ -484,7 +495,7 @@ function renderTeams() {
         <div class="team-header-name">${m.name}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="team-header-score">${t}</div>
-          <span class="collapse-icon">▾</span>
+          <span class="toggle-pill"><span class="pill-arrow">▾</span><span class="pill-label">roster</span></span>
         </div>
       </div>
       <div class="roster-body" id="roster-${m.id}">
@@ -512,12 +523,18 @@ function applyCollapse(id, collapsed) {
   const panel = document.getElementById(`panel-${id}`);
   const body  = document.getElementById(`roster-${id}`);
   if (!panel || !body) return;
+  const label = panel.querySelector('.pill-label');
   if (collapsed) {
-    body.style.maxHeight = body.scrollHeight + 'px'; // set explicit height first so transition works
-    requestAnimationFrame(() => { panel.classList.add('collapsed'); body.style.maxHeight = '0'; });
+    body.style.maxHeight = body.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      panel.classList.add('collapsed');
+      body.style.maxHeight = '0';
+      if (label) label.textContent = 'show';
+    });
   } else {
     panel.classList.remove('collapsed');
     body.style.maxHeight = body.scrollHeight + 'px';
+    if (label) label.textContent = 'roster';
     body.addEventListener('transitionend', () => { body.style.maxHeight = ''; }, { once: true });
   }
 }
