@@ -147,6 +147,18 @@
     .player-pts { font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: 500; color: var(--gold); min-width: 18px; text-align: right; }
     .player-pts.z { color: var(--muted); }
 
+    /* Collapsible roster */
+    .team-header { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .team-header:active { background: rgba(255,255,255,0.07); }
+    .collapse-icon { font-size: 0.7rem; color: var(--muted); transition: transform 0.22s; flex-shrink: 0; margin-left: 8px; }
+    .team-panel.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .roster-body { overflow: hidden; transition: max-height 0.28s ease; }
+    .team-panel.collapsed .roster-body { max-height: 0 !important; }
+
+    /* Players remaining badge */
+    .score-card .remaining { font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
+    .score-card .remaining .rem-active { color: rgba(255,255,255,0.65); }
+
     /* Leaderboard */
     .leaderboard-view { display: none; }
     .leaderboard-view.active { display: block; }
@@ -233,7 +245,20 @@ const MANAGERS = [
   { id: 'chad',  name: 'Chad',   color: '#f0a500' },
 ];
 
-// All nhlId values verified from nhl.com player page URLs
+// ── Active NHL teams per manager (update manually as teams are eliminated) ──
+// List only the NHL team abbreviations that are still alive in the playoffs.
+// Players whose team is NOT in this list will be counted as eliminated.
+const ACTIVE_TEAMS = {
+  porf:  ['BUF','BOS','TBL','MTL','CAR','OTT','PIT','PHI','COL','LAK','DAL','MIN','VEG','UTA','EDM','ANA'],
+  mikei: ['BUF','BOS','TBL','MTL','CAR','OTT','PIT','PHI','COL','LAK','DAL','MIN','VEG','UTA','EDM','ANA'],
+  matt:  ['BUF','BOS','TBL','MTL','CAR','OTT','PIT','PHI','COL','LAK','DAL','MIN','VEG','UTA','EDM','ANA'],
+  kyle:  ['BUF','BOS','TBL','MTL','CAR','OTT','PIT','PHI','COL','LAK','DAL','MIN','VEG','UTA','EDM','ANA'],
+  chad:  ['BUF','BOS','TBL','MTL','CAR','OTT','PIT','PHI','COL','LAK','DAL','MIN','VEG','UTA','EDM','ANA'],
+};
+// Total players per roster (update if rosters ever change)
+const ROSTER_SIZE = 21;
+
+
 const DRAFT = {
       porf: [
     { nhlId: 8478402, name: 'Connor McDavid',      team: 'EDM', type: 'skater' },
@@ -353,6 +378,12 @@ const DRAFT = {
 };
 
 // ── Scoring ──
+function activePlayers(id) {
+  const active = new Set(ACTIVE_TEAMS[id] || []);
+  if (active.size === 0) return DRAFT[id].length; // fallback: all active
+  return DRAFT[id].filter(p => active.has(p.team)).length;
+}
+
 function calc(stats, type) {
   if (!stats) return 0;
   return type === 'goalie'
@@ -413,13 +444,19 @@ function total(id) { return DRAFT[id].reduce((s, p) => s + calc(playerStats[p.nh
 
 function renderScoreboard() {
   const sorted = MANAGERS.map(m => ({ ...m, t: total(m.id) })).sort((a, b) => b.t - a.t);
-  document.getElementById('scoreboard').innerHTML = sorted.map((m, i) => `
+  document.getElementById('scoreboard').innerHTML = sorted.map((m, i) => {
+    const alive = activePlayers(m.id);
+    const total_r = DRAFT[m.id].length;
+    const remLabel = alive === total_r ? `${total_r} players` : `${alive}/${total_r} remaining`;
+    return `
     <div class="score-card ${activeManager === m.id ? 'active' : ''}" style="--mgr-color:${m.color}" onclick="toggleManager('${m.id}')">
       <div class="rank">#${i+1}</div>
       <div class="mgr">${m.name}</div>
       <div class="pts">${m.t}</div>
       <div class="lbl">PTS</div>
-    </div>`).join('');
+      <div class="remaining"><span class="rem-active">${remLabel}</span></div>
+    </div>`;
+  }).join('');
 }
 
 function renderTeams() {
@@ -441,15 +478,48 @@ function renderTeams() {
     };
     const sk = DRAFT[m.id].filter(p => p.type==='skater');
     const go = DRAFT[m.id].filter(p => p.type==='goalie');
-    return `<div class="team-panel ${dim?'dimmed':''}">
-      <div class="team-header" style="--mgr-color:${m.color}">
+    const panelId = `panel-${m.id}`;
+    return `<div class="team-panel ${dim?'dimmed':''}" id="${panelId}">
+      <div class="team-header" style="--mgr-color:${m.color}" onclick="toggleRoster('${m.id}')">
         <div class="team-header-name">${m.name}</div>
-        <div class="team-header-score">${t}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="team-header-score">${t}</div>
+          <span class="collapse-icon">▾</span>
+        </div>
       </div>
-      <div class="section-label">Skaters</div>${sk.map(row).join('')}
-      <div class="section-label">Goalies</div>${go.map(row).join('')}
+      <div class="roster-body" id="roster-${m.id}">
+        <div class="section-label">Skaters</div>${sk.map(row).join('')}
+        <div class="section-label">Goalies</div>${go.map(row).join('')}
+      </div>
     </div>`;
   }).join('');
+
+  // Restore collapse states after re-render
+  Object.keys(collapseState).forEach(id => {
+    if (collapseState[id]) applyCollapse(id, true);
+  });
+}
+
+// ── Collapse state (persists across re-renders) ──
+const collapseState = {};
+
+function toggleRoster(id) {
+  collapseState[id] = !collapseState[id];
+  applyCollapse(id, collapseState[id]);
+}
+
+function applyCollapse(id, collapsed) {
+  const panel = document.getElementById(`panel-${id}`);
+  const body  = document.getElementById(`roster-${id}`);
+  if (!panel || !body) return;
+  if (collapsed) {
+    body.style.maxHeight = body.scrollHeight + 'px'; // set explicit height first so transition works
+    requestAnimationFrame(() => { panel.classList.add('collapsed'); body.style.maxHeight = '0'; });
+  } else {
+    panel.classList.remove('collapsed');
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.addEventListener('transitionend', () => { body.style.maxHeight = ''; }, { once: true });
+  }
 }
 
 function renderLeaderboard() {
