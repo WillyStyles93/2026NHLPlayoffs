@@ -62,7 +62,7 @@
     .refresh-btn:active { transform: scale(0.96); opacity: 0.75; }
     .refresh-btn.loading { opacity: 0.5; pointer-events: none; }
 
-    /* Timestamp mobile - now always in header, this element is hidden */
+    /* Timestamp mobile - now always shown in header */
     .updated-mobile { display: none; }
 
     /* Scoreboard */
@@ -141,6 +141,9 @@
     .stat-chip.v { color: rgba(255,255,255,0.78); }
     .player-pts { font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: 500; color: var(--gold); min-width: 18px; text-align: right; }
     .player-pts.z { color: var(--muted); }
+    .player-row.eliminated { opacity: 0.32; }
+    .player-row.eliminated .player-name { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.25); }
+    .player-row.eliminated .team-abbr { color: #e05555; }
 
     /* Collapsible roster */
     .team-header { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.18s; }
@@ -159,10 +162,6 @@
     .team-header:hover .toggle-pill { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.8); }
     .roster-body { overflow: hidden; transition: max-height 0.28s ease; }
     .team-panel.collapsed .roster-body { max-height: 0 !important; }
-
-    .player-row.eliminated { opacity: 0.35; }
-    .player-row.eliminated .player-name { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.3); }
-    .player-row.eliminated .team-abbr::after { content: '✕'; display: block; font-size: 0.45rem; color: #e05555; margin-top: 1px; }
 
     /* Players remaining badge */
     .score-card .remaining { font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
@@ -184,6 +183,36 @@
     .lb-table tbody td.r { font-family: 'DM Mono', monospace; text-align: right; color: var(--muted); }
     .lb-table tbody td.p { font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; color: var(--gold); }
     .lb-mgr { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; letter-spacing: 0.05em; }
+
+    /* Leaderboard filters */
+    .lb-filters { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .lb-filter-btn {
+      background: transparent; border: 1px solid var(--line); color: var(--muted);
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em;
+      padding: 6px 12px; cursor: pointer; border-radius: 20px; text-transform: uppercase;
+      transition: all 0.18s; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    }
+    .lb-filter-btn:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+    .lb-filter-btn.active { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.35); color: #fff; }
+    .lb-filter-count { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--muted); margin-left: 4px; }
+
+    /* Active Today view */
+    .today-view { display: none; }
+    .today-view.active { display: block; }
+    .today-games-bar {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+    }
+    .today-matchup {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em;
+      background: rgba(255,255,255,0.05); border: 1px solid var(--line);
+      border-radius: 20px; padding: 4px 11px; color: rgba(255,255,255,0.6);
+      white-space: nowrap;
+    }
+    .today-matchup span { color: #fff; }
+    .today-empty {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted);
+      text-align: center; padding: 40px 0; letter-spacing: 0.08em;
+    }
 
     /* Footer */
     footer { margin-top: 44px; padding: 18px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -213,6 +242,7 @@
 
   <div class="view-controls">
     <button class="view-btn active" id="btnTeams" onclick="setView('teams')">Teams</button>
+    <button class="view-btn" id="btnToday" onclick="setView('today')">Active Today</button>
     <button class="view-btn" id="btnLeaderboard" onclick="setView('leaderboard')">All Players</button>
     <span class="filter-label" id="filterLabel"></span>
   </div>
@@ -221,7 +251,17 @@
     <div class="teams-grid" id="teamsGrid"></div>
   </div>
 
+  <div class="today-view" id="todayView">
+    <div class="today-games-bar" id="todayGamesBar"></div>
+    <div class="teams-grid" id="todayGrid"></div>
+  </div>
+
   <div class="leaderboard-view" id="leaderboardView">
+    <div class="lb-filters">
+      <button class="lb-filter-btn" id="btnTop20" onclick="toggleLbFilter('top20')">Top 20</button>
+      <button class="lb-filter-btn" id="btnActiveOnly" onclick="toggleLbFilter('active')">Active Only</button>
+      <span class="lb-filter-count" id="lbFilterCount"></span>
+    </div>
     <div class="lb-wrap">
       <table class="lb-table">
         <thead><tr>
@@ -266,6 +306,23 @@ const ACTIVE_TEAMS = {
 };
 // Total players per roster (update if rosters ever change)
 const ROSTER_SIZE = 21;
+
+// ── Today's games (update daily — list both teams for each game) ──
+// Format: 'YYYY-MM-DD': [['HOME','AWAY'], ...]
+const SCHEDULE = {
+  '2026-04-21': [['TBL','MTL'],['BOS','BUF'],['UTA','VEG'],['COL','LAK']],
+  // Add future dates here as the playoffs progress
+};
+
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getTodayTeams() {
+  const games = SCHEDULE[getTodayKey()] || [];
+  return { games, teams: new Set(games.flat()) };
+}
 
 
 const DRAFT = {
@@ -404,6 +461,8 @@ function calc(stats, type) {
 let playerStats = {};
 let activeManager = null;
 let currentView = 'teams';
+let lbShowTop20 = false;
+let lbActiveOnly = false;
 
 // ── Fetch ──
 async function fetchPlayerStats(nhlId, type) {
@@ -469,59 +528,114 @@ function renderScoreboard() {
 }
 
 function renderTeams() {
-  document.getElementById('teamsGrid').innerHTML = MANAGERS.map(m => {
-    const t = total(m.id);
-    const dim = activeManager && activeManager !== m.id;
-    const activeSet = new Set(ACTIVE_TEAMS[m.id] || []);
-    const row = p => {
-      const s = playerStats[p.nhlId];
-      const pt = calc(s, p.type);
-      const elim = activeSet.size > 0 && !activeSet.has(p.team);
-      const chips = p.type === 'goalie'
-        ? `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span><span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`
-        : `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span><span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
-      return `<div class="player-row${elim?' eliminated':''}">
-        <div class="team-abbr">${p.team}</div>
-        <div class="player-name">${p.name}</div>
-        <div class="player-stats">${chips}</div>
-        <div class="player-pts ${pt===0?'z':''}">${pt}</div>
-      </div>`;
-    };
-    const sk = DRAFT[m.id].filter(p => p.type==='skater');
-    const go = DRAFT[m.id].filter(p => p.type==='goalie');
-    const panelId = `panel-${m.id}`;
-    return `<div class="team-panel ${dim?'dimmed':''}" id="${panelId}">
-      <div class="team-header" style="--mgr-color:${m.color}" onclick="toggleRoster('${m.id}')">
-        <div class="team-header-name">${m.name}</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="team-header-score">${t}</div>
-          <span class="toggle-pill"><span class="pill-arrow">▾</span><span class="pill-label">hide</span></span>
-        </div>
-      </div>
-      <div class="roster-body" id="roster-${m.id}">
-        <div class="section-label">Skaters</div>${sk.map(row).join('')}
-        <div class="section-label">Goalies</div>${go.map(row).join('')}
-      </div>
-    </div>`;
-  }).join('');
-
-  // Restore collapse states after re-render
-  Object.keys(collapseState).forEach(id => {
-    if (collapseState[id]) applyCollapse(id, true);
-  });
+  const { teams: todayTeams } = getTodayTeams();
+  document.getElementById('teamsGrid').innerHTML = MANAGERS.map(m => buildManagerPanel(m, todayTeams, 'teams')).join('');
+  Object.keys(collapseState).forEach(id => { if (collapseState[id]) applyCollapse(id, true); });
 }
 
-// ── Collapse state (persists across re-renders) ──
+function renderToday() {
+  const { games, teams: todayTeams } = getTodayTeams();
+
+  // Games bar
+  const bar = document.getElementById('todayGamesBar');
+  if (games.length === 0) {
+    bar.innerHTML = '';
+  } else {
+    bar.innerHTML = games.map(([h, a]) =>
+      `<div class="today-matchup"><span>${h}</span> vs <span>${a}</span></div>`
+    ).join('');
+  }
+
+  // Filter managers to only those with at least one player active today
+  const mgrsWithPlayers = MANAGERS.filter(m =>
+    DRAFT[m.id].some(p => todayTeams.has(p.team))
+  );
+
+  const grid = document.getElementById('todayGrid');
+  if (games.length === 0) {
+    grid.innerHTML = '<div class="today-empty">No games scheduled today.</div>';
+    return;
+  }
+  if (mgrsWithPlayers.length === 0) {
+    grid.innerHTML = '<div class="today-empty">No pool players in today\'s games.</div>';
+    return;
+  }
+
+  grid.innerHTML = mgrsWithPlayers.map(m => buildManagerPanel(m, todayTeams, 'today')).join('');
+  Object.keys(collapseState).forEach(id => { if (collapseState[`today-${id}`]) applyCollapse(`today-${id}`, true); });
+}
+
+// Shared panel builder — used by both Teams and Active Today views
+function buildManagerPanel(m, highlightTeams, viewPrefix) {
+  const idPrefix = viewPrefix === 'today' ? 'today-' : '';
+  const activeSet = new Set(ACTIVE_TEAMS[m.id] || []);
+  const isElim = p => activeSet.size > 0 && !activeSet.has(p.team);
+  const isToday = p => highlightTeams && highlightTeams.has(p.team);
+
+  // In today view, only include players with a game today
+  const filterFn = viewPrefix === 'today' ? p => isToday(p) : () => true;
+  const sortSection = players => [...players].filter(filterFn).sort((a, b) => isElim(a) - isElim(b));
+
+  const row = p => {
+    const s = playerStats[p.nhlId];
+    const pt = calc(s, p.type);
+    const elim = isElim(p);
+    const chips = p.type === 'goalie'
+      ? `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span><span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`
+      : `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span><span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
+    return `<div class="player-row${elim?' eliminated':''}">
+      <div class="team-abbr">${p.team}</div>
+      <div class="player-name">${p.name}</div>
+      <div class="player-stats">${chips}</div>
+      <div class="player-pts ${pt===0?'z':''}">${pt}</div>
+    </div>`;
+  };
+
+  const sk = sortSection(DRAFT[m.id].filter(p => p.type==='skater'));
+  const go = sortSection(DRAFT[m.id].filter(p => p.type==='goalie'));
+  if (sk.length === 0 && go.length === 0) return '';
+
+  const t = [sk, go].flat().reduce((sum, p) => sum + calc(playerStats[p.nhlId], p.type), 0);
+  const dim = activeManager && activeManager !== m.id;
+  const panelId = `${idPrefix}panel-${m.id}`;
+  const rosterId = `${idPrefix}roster-${m.id}`;
+  const collapseKey = `${idPrefix}${m.id}`;
+
+  const skSection = sk.length ? `<div class="section-label">Skaters</div>${sk.map(row).join('')}` : '';
+  const goSection = go.length ? `<div class="section-label">Goalies</div>${go.map(row).join('')}` : '';
+
+  return `<div class="team-panel ${dim?'dimmed':''}" id="${panelId}">
+    <div class="team-header" style="--mgr-color:${m.color}" onclick="toggleRoster('${collapseKey}','${panelId}','${rosterId}')">
+      <div class="team-header-name">${m.name}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="team-header-score">${t}</div>
+        <span class="toggle-pill"><span class="pill-arrow">▾</span><span class="pill-label">Hide</span></span>
+      </div>
+    </div>
+    <div class="roster-body" id="${rosterId}">
+      ${skSection}${goSection}
+    </div>
+  </div>`;
+}
+
+// ── Collapse state ──
 const collapseState = {};
 
-function toggleRoster(id) {
-  collapseState[id] = !collapseState[id];
-  applyCollapse(id, collapseState[id]);
+function toggleRoster(key, panelId, rosterId) {
+  collapseState[key] = !collapseState[key];
+  applyCollapse(key, collapseState[key], panelId, rosterId);
 }
 
-function applyCollapse(id, collapsed) {
-  const panel = document.getElementById(`panel-${id}`);
-  const body  = document.getElementById(`roster-${id}`);
+function applyCollapse(key, collapsed, panelId, rosterId) {
+  // Support being called with just key (restore pass) — derive IDs from key
+  if (!panelId) {
+    const isToday = key.startsWith('today-');
+    const mId = isToday ? key.replace('today-','') : key;
+    panelId = isToday ? `today-panel-${mId}` : `panel-${mId}`;
+    rosterId = isToday ? `today-roster-${mId}` : `roster-${mId}`;
+  }
+  const panel = document.getElementById(panelId);
+  const body  = document.getElementById(rosterId);
   if (!panel || !body) return;
   const label = panel.querySelector('.pill-label');
   if (collapsed) {
@@ -529,27 +643,43 @@ function applyCollapse(id, collapsed) {
     requestAnimationFrame(() => {
       panel.classList.add('collapsed');
       body.style.maxHeight = '0';
-      if (label) label.textContent = 'show';
+      if (label) label.textContent = 'Show';
     });
   } else {
     panel.classList.remove('collapsed');
     body.style.maxHeight = body.scrollHeight + 'px';
-    if (label) label.textContent = 'roster';
+    if (label) label.textContent = 'Hide';
     body.addEventListener('transitionend', () => { body.style.maxHeight = ''; }, { once: true });
   }
 }
 
 function renderLeaderboard() {
-  const rows = [];
-  MANAGERS.forEach(m => DRAFT[m.id].forEach(p => rows.push({ m, p, s: playerStats[p.nhlId], pt: calc(playerStats[p.nhlId], p.type) })));
-  const f = activeManager ? rows.filter(r => r.m.id === activeManager) : rows;
-  f.sort((a,b) => b.pt - a.pt);
-  document.getElementById('lbBody').innerHTML = f.map((r,i) => {
+  const allRows = [];
+  MANAGERS.forEach(m => {
+    const activeSet = new Set(ACTIVE_TEAMS[m.id] || []);
+    DRAFT[m.id].forEach(p => {
+      const elim = activeSet.size > 0 && !activeSet.has(p.team);
+      allRows.push({ m, p, s: playerStats[p.nhlId], pt: calc(playerStats[p.nhlId], p.type), elim });
+    });
+  });
+
+  let f = activeManager ? allRows.filter(r => r.m.id === activeManager) : allRows;
+  if (lbActiveOnly) f = f.filter(r => !r.elim);
+  f.sort((a, b) => b.pt - a.pt);
+  const totalCount = f.length;
+  if (lbShowTop20) f = f.slice(0, 20);
+
+  document.getElementById('btnTop20').classList.toggle('active', lbShowTop20);
+  document.getElementById('btnActiveOnly').classList.toggle('active', lbActiveOnly);
+  const countEl = document.getElementById('lbFilterCount');
+  countEl.textContent = lbShowTop20 && totalCount > 20 ? `showing 20 of ${totalCount}` : `${totalCount} players`;
+
+  document.getElementById('lbBody').innerHTML = f.map((r, i) => {
     const g = r.p.type === 'goalie';
-    return `<tr>
+    return `<tr${r.elim ? ' style="opacity:0.38"' : ''}>
       <td class="r" style="color:var(--muted)">${i+1}</td>
       <td><span class="lb-mgr" style="color:${r.m.color}">${r.m.name}</span></td>
-      <td>${r.p.name}</td>
+      <td${r.elim ? ' style="text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.25)"' : ''}>${r.p.name}</td>
       <td class="r">${r.p.team}</td>
       <td class="r">${g?'—':(r.s?r.s.goals:'–')}</td>
       <td class="r">${g?'—':(r.s?r.s.assists:'–')}</td>
@@ -561,7 +691,7 @@ function renderLeaderboard() {
 }
 
 function render() {
-  renderScoreboard(); renderTeams(); renderLeaderboard();
+  renderScoreboard(); renderTeams(); renderToday(); renderLeaderboard();
   const fl = document.getElementById('filterLabel');
   if (activeManager) { const m = MANAGERS.find(x => x.id===activeManager); fl.textContent = `Showing: ${m.name}`; fl.style.color = m.color; }
   else { fl.textContent = ''; }
@@ -569,12 +699,19 @@ function render() {
 
 // ── Controls ──
 function toggleManager(id) { activeManager = activeManager === id ? null : id; render(); }
+function toggleLbFilter(filter) {
+  if (filter === 'top20') lbShowTop20 = !lbShowTop20;
+  if (filter === 'active') lbActiveOnly = !lbActiveOnly;
+  renderLeaderboard();
+}
 function setView(v) {
   currentView = v;
-  document.getElementById('teamsView').classList.toggle('hidden', v!=='teams');
-  document.getElementById('leaderboardView').classList.toggle('active', v==='leaderboard');
-  document.getElementById('btnTeams').classList.toggle('active', v==='teams');
-  document.getElementById('btnLeaderboard').classList.toggle('active', v==='leaderboard');
+  document.getElementById('teamsView').classList.toggle('hidden', v !== 'teams');
+  document.getElementById('todayView').classList.toggle('active', v === 'today');
+  document.getElementById('leaderboardView').classList.toggle('active', v === 'leaderboard');
+  document.getElementById('btnTeams').classList.toggle('active', v === 'teams');
+  document.getElementById('btnToday').classList.toggle('active', v === 'today');
+  document.getElementById('btnLeaderboard').classList.toggle('active', v === 'leaderboard');
   render();
 }
 function showError(msg) {
