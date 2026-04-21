@@ -307,21 +307,38 @@ const ACTIVE_TEAMS = {
 // Total players per roster (update if rosters ever change)
 const ROSTER_SIZE = 21;
 
-// ── Today's games (update daily — list both teams for each game) ──
-// Format: 'YYYY-MM-DD': [['HOME','AWAY'], ...]
-const SCHEDULE = {
-  '2026-04-21': [['TBL','MTL'],['BOS','BUF'],['UTA','VEG'],['COL','LAK']],
-  // Add future dates here as the playoffs progress
-};
+// ── Today's games — fetched live from /api/today ──
+let todaySchedule = { games: [], teams: new Set(), error: null, loaded: false };
 
-function getTodayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+async function fetchTodayGames() {
+  try {
+    const res = await fetch('/api/today');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const games = (data.matchups || []).map(m => [m.home, m.away]);
+    todaySchedule = { games, teams: new Set(games.flat()), error: null, loaded: true };
+  } catch (err) {
+    todaySchedule = { games: [], teams: new Set(), error: err.message, loaded: true };
+  }
+  renderToday();
 }
 
 function getTodayTeams() {
-  const games = SCHEDULE[getTodayKey()] || [];
-  return { games, teams: new Set(games.flat()) };
+  return { games: todaySchedule.games, teams: todaySchedule.teams };
+}
+
+// Schedule a refresh at the next 5:00 AM ET
+function scheduleNextDayRefresh() {
+  const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const next5am = new Date(nowET);
+  next5am.setHours(5, 0, 0, 0);
+  if (nowET >= next5am) next5am.setDate(next5am.getDate() + 1);
+  const msUntil = next5am - nowET;
+  setTimeout(() => {
+    fetchTodayGames();
+    scheduleNextDayRefresh(); // re-schedule for the following day
+  }, msUntil);
 }
 
 
@@ -535,34 +552,44 @@ function renderTeams() {
 
 function renderToday() {
   const { games, teams: todayTeams } = getTodayTeams();
-
-  // Games bar
   const bar = document.getElementById('todayGamesBar');
-  if (games.length === 0) {
-    bar.innerHTML = '';
-  } else {
-    bar.innerHTML = games.map(([h, a]) =>
-      `<div class="today-matchup"><span>${h}</span> vs <span>${a}</span></div>`
-    ).join('');
-  }
-
-  // Filter managers to only those with at least one player active today
-  const mgrsWithPlayers = MANAGERS.filter(m =>
-    DRAFT[m.id].some(p => todayTeams.has(p.team))
-  );
-
   const grid = document.getElementById('todayGrid');
-  if (games.length === 0) {
-    grid.innerHTML = '<div class="today-empty">No games scheduled today.</div>';
+
+  // Still loading
+  if (!todaySchedule.loaded) {
+    bar.innerHTML = '';
+    grid.innerHTML = '<div class="today-empty">Loading today\'s games…</div>';
     return;
   }
+
+  // API error
+  if (todaySchedule.error) {
+    bar.innerHTML = '';
+    grid.innerHTML = `<div class="today-empty">Could not load today\'s schedule.<br><span style="font-size:0.55rem;opacity:0.5">${todaySchedule.error}</span></div>`;
+    return;
+  }
+
+  // Games bar
+  if (games.length === 0) {
+    bar.innerHTML = '';
+    grid.innerHTML = '<div class="today-empty">No playoff games scheduled today.</div>';
+    return;
+  }
+
+  bar.innerHTML = games.map(([h, a]) =>
+    `<div class="today-matchup"><span>${h}</span> vs <span>${a}</span></div>`
+  ).join('');
+
+  // Filter managers to only those with at least one player in today's games
+  const mgrsWithPlayers = MANAGERS.filter(m => DRAFT[m.id].some(p => todayTeams.has(p.team)));
+
   if (mgrsWithPlayers.length === 0) {
     grid.innerHTML = '<div class="today-empty">No pool players in today\'s games.</div>';
     return;
   }
 
   grid.innerHTML = mgrsWithPlayers.map(m => buildManagerPanel(m, todayTeams, 'today')).join('');
-  Object.keys(collapseState).forEach(id => { if (collapseState[`today-${id}`]) applyCollapse(`today-${id}`, true); });
+  Object.keys(collapseState).forEach(key => { if (key.startsWith('today-') && collapseState[key]) applyCollapse(key); });
 }
 
 // Shared panel builder — used by both Teams and Active Today views
@@ -722,6 +749,8 @@ function showError(msg) {
 // ── Boot ──
 render();
 fetchAllStats();
+fetchTodayGames();
+scheduleNextDayRefresh();
 setInterval(fetchAllStats, 5 * 60 * 1000);
 </script>
 </body>
