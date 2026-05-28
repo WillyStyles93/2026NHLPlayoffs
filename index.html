@@ -62,7 +62,6 @@
     .refresh-btn:active { transform: scale(0.96); opacity: 0.75; }
     .refresh-btn.loading { opacity: 0.5; pointer-events: none; }
 
-    /* Timestamp mobile - now always shown in header */
     .updated-mobile { display: none; }
 
     /* Scoreboard */
@@ -84,6 +83,8 @@
     .score-card .mgr  { font-family: 'Bebas Neue', sans-serif; font-size: clamp(0.85rem, 3.2vw, 1.25rem); letter-spacing: 0.05em; color: var(--mgr-color, #fff); line-height: 1; }
     .score-card .pts  { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.7rem, 5.5vw, 2.8rem); line-height: 1.05; color: #fff; margin: 3px 0 1px; }
     .score-card .lbl  { font-family: 'DM Mono', monospace; font-size: 0.52rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+    .score-card .remaining { font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
+    .score-card .remaining .rem-active { color: rgba(255,255,255,0.65); }
 
     /* Error */
     .error-banner {
@@ -104,6 +105,27 @@
     }
     .view-btn:active { opacity: 0.7; }
     .view-btn.active { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: #fff; }
+
+    /* Remaining toggle — pill style to distinguish from main nav */
+    .remaining-toggle {
+      background: transparent; border: 1px solid var(--line); color: var(--muted);
+      font-family: 'DM Mono', monospace; font-size: 0.63rem; letter-spacing: 0.1em;
+      padding: 8px 13px; cursor: pointer; border-radius: 20px; text-transform: uppercase;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .remaining-toggle:active { opacity: 0.7; }
+    .remaining-toggle.active {
+      background: rgba(240,165,0,0.15); border-color: rgba(240,165,0,0.5);
+      color: var(--gold);
+    }
+    .remaining-toggle .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted); transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .remaining-toggle.active .dot { background: var(--gold); }
+
     .filter-label { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; margin-left: auto; }
 
     /* Teams grid */
@@ -117,7 +139,11 @@
       padding: 11px 14px; border-bottom: 1px solid var(--line);
       display: flex; align-items: center; justify-content: space-between;
       background: rgba(255,255,255,0.03); border-left: 3px solid var(--mgr-color, var(--blue));
+      cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      transition: background 0.18s;
     }
+    .team-header:hover { background: rgba(255,255,255,0.07); }
+    .team-header:active { background: rgba(255,255,255,0.1); }
     .team-header-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem; letter-spacing: 0.07em; color: var(--mgr-color, #fff); }
     .team-header-score { font-family: 'Bebas Neue', sans-serif; font-size: 1.45rem; color: #fff; }
 
@@ -145,10 +171,6 @@
     .player-row.eliminated .player-name { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.25); }
     .player-row.eliminated .team-abbr { color: #e05555; }
 
-    /* Collapsible roster */
-    .team-header { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: background 0.18s; }
-    .team-header:hover { background: rgba(255,255,255,0.07); }
-    .team-header:active { background: rgba(255,255,255,0.1); }
     .toggle-pill {
       font-family: 'DM Mono', monospace; font-size: 0.52rem; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--muted);
@@ -162,10 +184,6 @@
     .team-header:hover .toggle-pill { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.8); }
     .roster-body { overflow: hidden; transition: max-height 0.28s ease; }
     .team-panel.collapsed .roster-body { max-height: 0 !important; }
-
-    /* Players remaining badge */
-    .score-card .remaining { font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.06em; }
-    .score-card .remaining .rem-active { color: rgba(255,255,255,0.65); }
 
     /* Leaderboard */
     .leaderboard-view { display: none; }
@@ -184,7 +202,6 @@
     .lb-table tbody td.p { font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; color: var(--gold); }
     .lb-mgr { font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; letter-spacing: 0.05em; }
 
-    /* Leaderboard filters */
     .lb-filters { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
     .lb-filter-btn {
       background: transparent; border: 1px solid var(--line); color: var(--muted);
@@ -199,9 +216,7 @@
     /* Active Today view */
     .today-view { display: none; }
     .today-view.active { display: block; }
-    .today-games-bar {
-      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
-    }
+    .today-games-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
     .today-matchup {
       font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em;
       background: rgba(255,255,255,0.05); border: 1px solid var(--line);
@@ -244,6 +259,9 @@
     <button class="view-btn active" id="btnTeams" onclick="setView('teams')">Teams</button>
     <button class="view-btn" id="btnToday" onclick="setView('today')">Active Today</button>
     <button class="view-btn" id="btnLeaderboard" onclick="setView('leaderboard')">All Players</button>
+    <button class="remaining-toggle" id="btnRemaining" onclick="toggleRemaining()">
+      <span class="dot"></span>Remaining
+    </button>
     <span class="filter-label" id="filterLabel"></span>
   </div>
 
@@ -267,7 +285,7 @@
         <thead><tr>
           <th class="r">#</th><th>Manager</th><th>Player</th>
           <th class="r">NHL</th><th class="r">G</th><th class="r">A</th>
-          <th class="r">W</th><th class="r">SO</th><th class="r">PTS</th>
+          <th class="r">W</th><th class="r">A</th><th class="r">SO</th><th class="r">PTS</th>
         </tr></thead>
         <tbody id="lbBody"></tbody>
       </table>
@@ -279,6 +297,7 @@
       <div class="li">Goal <span>+1</span></div>
       <div class="li">Assist <span>+1</span></div>
       <div class="li">Goalie Win <span>+1</span></div>
+      <div class="li">Goalie Assist <span>+1</span></div>
       <div class="li">Shutout <span>+4</span></div>
     </div>
     <p>NHL API &nbsp;·&nbsp; Auto-refreshes every 5 min</p>
@@ -294,9 +313,6 @@ const MANAGERS = [
   { id: 'chad',  name: 'Chad',   color: '#f0a500' },
 ];
 
-// ── Active NHL teams per manager (update manually as teams are eliminated) ──
-// List only the NHL team abbreviations that are still alive in the playoffs.
-// Players whose team is NOT in this list will be counted as eliminated.
 const ACTIVE_TEAMS = {
   porf:  ['MTL','CAR','VGK'],
   mikei: ['MTL','CAR','VGK'],
@@ -304,10 +320,8 @@ const ACTIVE_TEAMS = {
   kyle:  ['MTL','CAR','VGK'],
   chad:  ['MTL','CAR','VGK'],
 };
-// Total players per roster (update if rosters ever change)
 const ROSTER_SIZE = 21;
 
-// ── Today's games — fetched live from /api/today ──
 let todaySchedule = { games: [], teams: new Set(), error: null, loaded: false };
 
 async function fetchTodayGames() {
@@ -328,7 +342,6 @@ function getTodayTeams() {
   return { games: todaySchedule.games, teams: todaySchedule.teams };
 }
 
-// Schedule a refresh at the next 5:00 AM ET
 function scheduleNextDayRefresh() {
   const nowET = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
   const next5am = new Date(nowET);
@@ -337,13 +350,12 @@ function scheduleNextDayRefresh() {
   const msUntil = next5am - nowET;
   setTimeout(() => {
     fetchTodayGames();
-    scheduleNextDayRefresh(); // re-schedule for the following day
+    scheduleNextDayRefresh();
   }, msUntil);
 }
 
-
 const DRAFT = {
-      porf: [
+  porf: [
     { nhlId: 8478402, name: 'Connor McDavid',      team: 'EDM', type: 'skater' },
     { nhlId: 8471675, name: 'Sidney Crosby',       team: 'PIT', type: 'skater' },
     { nhlId: 8478864, name: 'Kirill Kaprizov',     team: 'MIN', type: 'skater' },
@@ -366,7 +378,7 @@ const DRAFT = {
     { nhlId: 8478971, name: 'Connor Ingram',       team: 'EDM', type: 'goalie' },
     { nhlId: 8482661, name: 'Jesper Wallstedt',    team: 'MIN', type: 'goalie' },
   ],
-    mikei: [
+  mikei: [
     { nhlId: 8476453, name: 'Nikita Kucherov',     team: 'TBL', type: 'skater' },
     { nhlId: 8475913, name: 'Mark Stone',          team: 'VGK', type: 'skater' },
     { nhlId: 8478427, name: 'Sebastian Aho',       team: 'CAR', type: 'skater' },
@@ -389,7 +401,7 @@ const DRAFT = {
     { nhlId: 8476883, name: 'Andrei Vasilevskiy',  team: 'TBL', type: 'goalie' },
     { nhlId: 8480280, name: 'Jeremy Swayman',      team: 'BOS', type: 'goalie' },
   ],
-    matt: [
+  matt: [
     { nhlId: 8477492, name: 'Nathan MacKinnon',    team: 'COL', type: 'skater' },
     { nhlId: 8477934, name: 'Leon Draisaitl',      team: 'EDM', type: 'skater' },
     { nhlId: 8482740, name: 'Wyatt Johnston',      team: 'DAL', type: 'skater' },
@@ -412,7 +424,7 @@ const DRAFT = {
     { nhlId: 8479979, name: 'Jake Oettinger',      team: 'DAL', type: 'goalie' },
     { nhlId: 8479394, name: 'Carter Hart',         team: 'VGK', type: 'goalie' },
   ],
-    kyle: [
+  kyle: [
     { nhlId: 8478420, name: 'Mikko Rantanen',      team: 'DAL', type: 'skater' },
     { nhlId: 8478403, name: 'Jack Eichel',         team: 'VGK', type: 'skater' },
     { nhlId: 8480018, name: 'Nick Suzuki',         team: 'MTL', type: 'skater' },
@@ -436,41 +448,43 @@ const DRAFT = {
     { nhlId: 8476999, name: 'Linus Ullmark',       team: 'OTT', type: 'goalie' },
   ],
   chad: [
-  { nhlId: 8480039, name: 'Martin Necas',        team: 'COL', type: 'skater' },
-  { nhlId: 8479542, name: 'Brandon Hagel',       team: 'TBL', type: 'skater' },
-  { nhlId: 8477404, name: 'Jake Guentzel',       team: 'TBL', type: 'skater' },
-  { nhlId: 8479420, name: 'Tage Thompson',       team: 'BUF', type: 'skater' },
-  { nhlId: 8478010, name: 'Brayden Point',       team: 'TBL', type: 'skater' },
-  { nhlId: 8477949, name: 'Alex Tuch',           team: 'BUF', type: 'skater' },
-  { nhlId: 8476455, name: 'Gabriel Landeskog',   team: 'COL', type: 'skater' },
-  { nhlId: 8479343, name: 'Clayton Keller',      team: 'UTA', type: 'skater' },
-  { nhlId: 8482699, name: 'Dylan Guenther',      team: 'UTA', type: 'skater' },
-  { nhlId: 8482659, name: 'Josh Doan',           team: 'BUF', type: 'skater' },
-  { nhlId: 8483445, name: 'Cutter Gauthier',     team: 'ANA', type: 'skater' },
-  { nhlId: 8477951, name: 'Nick Schmaltz',       team: 'UTA', type: 'skater' },
-  { nhlId: 8482201, name: 'Gage Goncalves',      team: 'TBL', type: 'skater' },
-  { nhlId: 8475798, name: 'Mikael Granlund',     team: 'ANA', type: 'skater' },
-  { nhlId: 8477960, name: 'Adrian Kempe',        team: 'LAK', type: 'skater' },
-  { nhlId: 8480839, name: 'Rasmus Dahlin',       team: 'BUF', type: 'skater' },
-  { nhlId: 8479410, name: 'Mikhail Sergachev',   team: 'UTA', type: 'skater' },
-  { nhlId: 8481605, name: 'Jackson LaCombe',     team: 'ANA', type: 'skater' },
-  { nhlId: 8482100, name: 'Alexander Nikishin',  team: 'CAR', type: 'skater' },
-  { nhlId: 8475809, name: 'Scott Wedgewood',     team: 'COL', type: 'goalie' },
-  { nhlId: 8480045, name: 'Ukko-Pekka Luukkonen', team: 'BUF', type: 'goalie' },
-],
+    { nhlId: 8480039, name: 'Martin Necas',        team: 'COL', type: 'skater' },
+    { nhlId: 8479542, name: 'Brandon Hagel',       team: 'TBL', type: 'skater' },
+    { nhlId: 8477404, name: 'Jake Guentzel',       team: 'TBL', type: 'skater' },
+    { nhlId: 8479420, name: 'Tage Thompson',       team: 'BUF', type: 'skater' },
+    { nhlId: 8478010, name: 'Brayden Point',       team: 'TBL', type: 'skater' },
+    { nhlId: 8477949, name: 'Alex Tuch',           team: 'BUF', type: 'skater' },
+    { nhlId: 8476455, name: 'Gabriel Landeskog',   team: 'COL', type: 'skater' },
+    { nhlId: 8479343, name: 'Clayton Keller',      team: 'UTA', type: 'skater' },
+    { nhlId: 8482699, name: 'Dylan Guenther',      team: 'UTA', type: 'skater' },
+    { nhlId: 8482659, name: 'Josh Doan',           team: 'BUF', type: 'skater' },
+    { nhlId: 8483445, name: 'Cutter Gauthier',     team: 'ANA', type: 'skater' },
+    { nhlId: 8477951, name: 'Nick Schmaltz',       team: 'UTA', type: 'skater' },
+    { nhlId: 8482201, name: 'Gage Goncalves',      team: 'TBL', type: 'skater' },
+    { nhlId: 8475798, name: 'Mikael Granlund',     team: 'ANA', type: 'skater' },
+    { nhlId: 8477960, name: 'Adrian Kempe',        team: 'LAK', type: 'skater' },
+    { nhlId: 8480839, name: 'Rasmus Dahlin',       team: 'BUF', type: 'skater' },
+    { nhlId: 8479410, name: 'Mikhail Sergachev',   team: 'UTA', type: 'skater' },
+    { nhlId: 8481605, name: 'Jackson LaCombe',     team: 'ANA', type: 'skater' },
+    { nhlId: 8482100, name: 'Alexander Nikishin',  team: 'CAR', type: 'skater' },
+    { nhlId: 8475809, name: 'Scott Wedgewood',     team: 'COL', type: 'goalie' },
+    { nhlId: 8480045, name: 'Ukko-Pekka Luukkonen', team: 'BUF', type: 'goalie' },
+  ],
 };
 
 // ── Scoring ──
+// Goalie: wins + assists + shutouts*4
+// Skater: goals + assists
 function activePlayers(id) {
   const active = new Set(ACTIVE_TEAMS[id] || []);
-  if (active.size === 0) return DRAFT[id].length; // fallback: all active
+  if (active.size === 0) return DRAFT[id].length;
   return DRAFT[id].filter(p => active.has(p.team)).length;
 }
 
 function calc(stats, type) {
   if (!stats) return 0;
   return type === 'goalie'
-    ? (stats.wins || 0) + (stats.shutouts || 0) * 4
+    ? (stats.wins || 0) + (stats.assists || 0) + (stats.shutouts || 0) * 4
     : (stats.goals || 0) + (stats.assists || 0);
 }
 
@@ -480,17 +494,17 @@ let activeManager = null;
 let currentView = 'teams';
 let lbShowTop20 = false;
 let lbActiveOnly = false;
+let showRemainingOnly = false; // NEW: Remaining toggle state
 
 // ── Fetch ──
 async function fetchPlayerStats(nhlId, type) {
   try {
-    // NHL Stats REST API — returns aggregate 2025-26 playoff totals directly
     const res = await fetch(`/api/player?id=${nhlId}&type=${type}`);
-    if (!res.ok) return type === 'goalie' ? { wins: 0, shutouts: 0 } : { goals: 0, assists: 0 };
+    if (!res.ok) return type === 'goalie' ? { wins: 0, assists: 0, shutouts: 0 } : { goals: 0, assists: 0 };
     const data = await res.json();
     const row = (data.data || [])[0];
-    if (!row) return type === 'goalie' ? { wins: 0, shutouts: 0 } : { goals: 0, assists: 0 };
-    if (type === 'goalie') return { wins: row.wins || 0, shutouts: row.shutouts || 0 };
+    if (!row) return type === 'goalie' ? { wins: 0, assists: 0, shutouts: 0 } : { goals: 0, assists: 0 };
+    if (type === 'goalie') return { wins: row.wins || 0, assists: row.assists || 0, shutouts: row.shutouts || 0 };
     return { goals: row.goals || 0, assists: row.assists || 0 };
   } catch { return null; }
 }
@@ -525,7 +539,13 @@ async function fetchAllStats() {
 }
 
 // ── Render helpers ──
-function total(id) { return DRAFT[id].reduce((s, p) => s + calc(playerStats[p.nhlId], p.type), 0); }
+function total(id) {
+  const activeSet = new Set(ACTIVE_TEAMS[id] || []);
+  return DRAFT[id].reduce((s, p) => {
+    // If remaining filter is on in scoreboard context, only count active players
+    return s + calc(playerStats[p.nhlId], p.type);
+  }, 0);
+}
 
 function renderScoreboard() {
   const sorted = MANAGERS.map(m => ({ ...m, t: total(m.id) })).sort((a, b) => b.t - a.t);
@@ -555,21 +575,18 @@ function renderToday() {
   const bar = document.getElementById('todayGamesBar');
   const grid = document.getElementById('todayGrid');
 
-  // Still loading
   if (!todaySchedule.loaded) {
     bar.innerHTML = '';
     grid.innerHTML = '<div class="today-empty">Loading today\'s games…</div>';
     return;
   }
 
-  // API error
   if (todaySchedule.error) {
     bar.innerHTML = '';
     grid.innerHTML = `<div class="today-empty">Could not load today\'s schedule.<br><span style="font-size:0.55rem;opacity:0.5">${todaySchedule.error}</span></div>`;
     return;
   }
 
-  // Games bar
   if (games.length === 0) {
     bar.innerHTML = '';
     grid.innerHTML = '<div class="today-empty">No playoff games scheduled today.</div>';
@@ -580,7 +597,6 @@ function renderToday() {
     `<div class="today-matchup"><span>${h}</span> vs <span>${a}</span></div>`
   ).join('');
 
-  // Filter managers to only those with at least one player in today's games
   const mgrsWithPlayers = MANAGERS.filter(m => DRAFT[m.id].some(p => todayTeams.has(p.team)));
 
   if (mgrsWithPlayers.length === 0) {
@@ -592,24 +608,35 @@ function renderToday() {
   Object.keys(collapseState).forEach(key => { if (key.startsWith('today-') && collapseState[key]) applyCollapse(key); });
 }
 
-// Shared panel builder — used by both Teams and Active Today views
+// Shared panel builder
 function buildManagerPanel(m, highlightTeams, viewPrefix) {
   const idPrefix = viewPrefix === 'today' ? 'today-' : '';
   const activeSet = new Set(ACTIVE_TEAMS[m.id] || []);
   const isElim = p => activeSet.size > 0 && !activeSet.has(p.team);
   const isToday = p => highlightTeams && highlightTeams.has(p.team);
 
-  // In today view, only include players with a game today
-  const filterFn = viewPrefix === 'today' ? p => isToday(p) : () => true;
+  // Filter logic: today view filters by today's games; remaining toggle filters eliminated players
+  const filterFn = p => {
+    if (viewPrefix === 'today' && !isToday(p)) return false;
+    if (showRemainingOnly && isElim(p)) return false;
+    return true;
+  };
+
   const sortSection = players => [...players].filter(filterFn).sort((a, b) => isElim(a) - isElim(b));
 
   const row = p => {
     const s = playerStats[p.nhlId];
     const pt = calc(s, p.type);
     const elim = isElim(p);
-    const chips = p.type === 'goalie'
-      ? `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span><span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`
-      : `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span><span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
+    let chips;
+    if (p.type === 'goalie') {
+      chips = `<span class="stat-chip ${s&&s.wins?'v':''}">W:${s?s.wins:'–'}</span>`
+            + `<span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`
+            + `<span class="stat-chip ${s&&s.shutouts?'v':''}">SO:${s?s.shutouts:'–'}</span>`;
+    } else {
+      chips = `<span class="stat-chip ${s&&s.goals?'v':''}">G:${s?s.goals:'–'}</span>`
+            + `<span class="stat-chip ${s&&s.assists?'v':''}">A:${s?s.assists:'–'}</span>`;
+    }
     return `<div class="player-row${elim?' eliminated':''}">
       <div class="team-abbr">${p.team}</div>
       <div class="player-name">${p.name}</div>
@@ -622,7 +649,10 @@ function buildManagerPanel(m, highlightTeams, viewPrefix) {
   const go = sortSection(DRAFT[m.id].filter(p => p.type==='goalie'));
   if (sk.length === 0 && go.length === 0) return '';
 
-  const t = [sk, go].flat().reduce((sum, p) => sum + calc(playerStats[p.nhlId], p.type), 0);
+  // Score shown respects remaining filter (only sum visible players)
+  const visiblePlayers = [...sk, ...go];
+  const t = visiblePlayers.reduce((sum, p) => sum + calc(playerStats[p.nhlId], p.type), 0);
+
   const dim = activeManager && activeManager !== m.id;
   const panelId = `${idPrefix}panel-${m.id}`;
   const rosterId = `${idPrefix}roster-${m.id}`;
@@ -654,7 +684,6 @@ function toggleRoster(key, panelId, rosterId) {
 }
 
 function applyCollapse(key, collapsed, panelId, rosterId) {
-  // Support being called with just key (restore pass) — derive IDs from key
   if (!panelId) {
     const isToday = key.startsWith('today-');
     const mId = isToday ? key.replace('today-','') : key;
@@ -709,7 +738,7 @@ function renderLeaderboard() {
       <td${r.elim ? ' style="text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.25)"' : ''}>${r.p.name}</td>
       <td class="r">${r.p.team}</td>
       <td class="r">${g?'—':(r.s?r.s.goals:'–')}</td>
-      <td class="r">${g?'—':(r.s?r.s.assists:'–')}</td>
+      <td class="r">${r.s?r.s.assists:'–'}</td>
       <td class="r">${g?(r.s?r.s.wins:'–'):'—'}</td>
       <td class="r">${g?(r.s?r.s.shutouts:'–'):'—'}</td>
       <td class="p">${r.pt}</td>
@@ -731,6 +760,15 @@ function toggleLbFilter(filter) {
   if (filter === 'active') lbActiveOnly = !lbActiveOnly;
   renderLeaderboard();
 }
+
+// NEW: Remaining toggle
+function toggleRemaining() {
+  showRemainingOnly = !showRemainingOnly;
+  const btn = document.getElementById('btnRemaining');
+  btn.classList.toggle('active', showRemainingOnly);
+  render();
+}
+
 function setView(v) {
   currentView = v;
   document.getElementById('teamsView').classList.toggle('hidden', v !== 'teams');
@@ -741,6 +779,7 @@ function setView(v) {
   document.getElementById('btnLeaderboard').classList.toggle('active', v === 'leaderboard');
   render();
 }
+
 function showError(msg) {
   const el = document.getElementById('errorBanner');
   if (msg) { el.textContent = msg; el.classList.add('show'); } else { el.classList.remove('show'); }
